@@ -5,7 +5,6 @@ import com.google.common.collect.ImmutableSet;
 import uk.ac.bris.cs.scotlandyard.model.Board.GameState;
 
 import javax.annotation.Nonnull;
-import javax.annotation.concurrent.Immutable;
 import java.util.*;
 
 final class MyGameState implements GameState {
@@ -96,6 +95,9 @@ final class MyGameState implements GameState {
          this.everyone = initEveryone(detectives,mrX);
          Set<Piece> win = new HashSet<>();
          this.winner = ImmutableSet.copyOf(win);
+        Set<Move> initmove= new HashSet<>();
+        this.moves = ImmutableSet.copyOf(initmove);
+
     }
     @Override
     public GameSetup getSetup(){
@@ -177,7 +179,32 @@ final class MyGameState implements GameState {
 
     @Override
     public GameState advance(Move move){
-        return null;
+        //if(!moves.contains(move)) throw new IllegalArgumentException("Illegal move: "+move);
+        for(Player x : everyone)
+            if(x.piece() == move.commencedBy()){
+               x = x.use(move.tickets());
+               int z = move.visit(new Move.Visitor<>(){
+   @Override
+   public Integer visit(Move.SingleMove singleMove){
+      return singleMove.destination;
+  }
+   @Override
+   public Integer visit(Move.DoubleMove doubleMove){
+      return doubleMove.destination2;
+  }
+                });
+               x.at(z);
+               //this section should add the move to the log if MrX was the one to do it, I don't know how to do it tho
+              /* if(move.commencedBy().isMrX()){
+                   List<LogEntry> newlog = new ArrayList<>();
+                   newlog.addAll(this.log);
+
+               }*/
+
+
+
+            }
+        return new MyGameState(setup,remaining,log,mrX,detectives);
     }
 
 }
