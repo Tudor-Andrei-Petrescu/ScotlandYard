@@ -11,7 +11,7 @@ final class MyGameState implements GameState {
     private final GameSetup setup;
     private ImmutableSet<Piece> remaining;
     private ImmutableList<LogEntry> log;
-    private final Player mrX;
+    private Player mrX;
     private final List<Player> detectives;
     private ImmutableList<Player> everyone;
     private ImmutableSet<Move> moves;
@@ -179,10 +179,15 @@ final class MyGameState implements GameState {
 
     @Override
     public GameState advance(Move move){
-        //if(!moves.contains(move)) throw new IllegalArgumentException("Illegal move: "+move);
+//       if(!moves.contains(move)) throw new IllegalArgumentException("Illegal move: "+move);
         for(Player x : everyone)
             if(x.piece() == move.commencedBy()){
                x = x.use(move.tickets());
+               if(x.piece().isDetective()){
+                   for(Player y : everyone)
+                       if(y.piece().isMrX())
+                           y = y.give(move.tickets());
+               }
                int z = move.visit(new Move.Visitor<>(){
    @Override
    public Integer visit(Move.SingleMove singleMove){
@@ -193,13 +198,15 @@ final class MyGameState implements GameState {
       return doubleMove.destination2;
   }
                 });
-               x.at(z);
-               //this section should add the move to the log if MrX was the one to do it, I don't know how to do it tho
-              /* if(move.commencedBy().isMrX()){
+               x = x.at(z);
+               //this section should add the move to the log if MrX was the one to do it
+               if(move.commencedBy().isMrX()){
                    List<LogEntry> newlog = new ArrayList<>();
                    newlog.addAll(this.log);
+                   this.mrX = x;
 
-               }*/
+
+               }
 
 
 
