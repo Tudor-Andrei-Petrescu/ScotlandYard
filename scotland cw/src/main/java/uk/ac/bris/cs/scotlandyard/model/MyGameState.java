@@ -11,7 +11,7 @@ final class MyGameState implements GameState {
     private final GameSetup setup;
     private final ImmutableSet<Piece> remaining;
     private ImmutableList<LogEntry> log;
-    private Player mrX;
+    private final Player mrX;
     private final List<Player> detectives;
     private ImmutableList<Player> everyone;
     private ImmutableSet<Move> moves;
@@ -149,8 +149,8 @@ final class MyGameState implements GameState {
                     for (ScotlandYard.Transport t : setup.graph.edgeValueOrDefault(source, destination, ImmutableSet.of())) {
                         if (player.has(t.requiredTicket()))
                             singleMoves.add(new Move.SingleMove(player.piece(), source, t.requiredTicket(), destination));
-                        if(player.isMrX() && player.has(ScotlandYard.Ticket.SECRET))
-                            singleMoves.add(new Move.SingleMove(player.piece(), source, ScotlandYard.Ticket.SECRET, destination));
+                      // if(player.isMrX() && player.has(ScotlandYard.Ticket.SECRET))
+                            //singleMoves.add(new Move.SingleMove(player.piece(), source, ScotlandYard.Ticket.SECRET, destination));
                     }
             }
         }
@@ -165,13 +165,24 @@ final class MyGameState implements GameState {
     public ImmutableSet<Piece> getWinner(){
         return this.winner;
     }
-
-    @Override
-    public ImmutableSet<Move> getAvailableMoves(){
-        Set<Move> moves = new HashSet<>();
+    private Player getPlayer(Piece piece){
+        Player tmp = null;
         for(Player x : everyone)
-            moves.add((Move) makeSingleMoves(setup, detectives, x, x.location()));
-        this.moves= ImmutableSet.copyOf(moves);
+            if(x.piece().equals(piece))
+               tmp = x;
+            return tmp;
+    }
+    @Override
+    public ImmutableSet<Move> getAvailableMoves() {
+        Set<Move> moves = new HashSet<>();
+        Set<Move.SingleMove> singleMoves = new HashSet<>();
+        Player player = null;
+        for (Piece x : this.remaining) {
+            player = getPlayer(x);
+            singleMoves.addAll(makeSingleMoves(setup, detectives, player, player.location()));
+        }
+
+        this.moves = ImmutableSet.copyOf(moves);
         return this.moves;
     }
 
@@ -188,6 +199,7 @@ final class MyGameState implements GameState {
     }
     @Override
     public GameState advance(Move move){
+        //if(!moves.contains(move)) throw new IllegalArgumentException("Illegal move: "+move);
         List<Player> evr = new ArrayList<>();
         for(Player x : everyone){
             Player tmp = x;
@@ -221,10 +233,10 @@ final class MyGameState implements GameState {
 
         }
         this.everyone = ImmutableList.copyOf(evr);
-        this.mrX = evr.get(0);
+        Player mrx = evr.get(0);
         evr.remove(0);
         ImmutableList<Player> detective = ImmutableList.copyOf(evr);
-        return new MyGameState(setup,remaining,log,mrX,detective);
+        return new MyGameState(setup,remaining,log,mrx,detective);
 
     }
 
