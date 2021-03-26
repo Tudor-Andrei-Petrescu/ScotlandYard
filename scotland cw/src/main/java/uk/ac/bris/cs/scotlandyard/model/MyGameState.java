@@ -90,19 +90,26 @@ final class MyGameState implements GameState {
          rightTickets(detectives);
          this.detectives = detectives;
          this.everyone = initEveryone(detectives,mrX);
-         Set<Piece> win = new HashSet<>(getWinner());
-        Set<Move> moves = new HashSet<>();
-         if(!win.isEmpty())
-             this.moves = ImmutableSet.copyOf(moves);
-        this.winner = ImmutableSet.copyOf(win);
+         Set<Piece> win = new HashSet<>();
+        if(detectivesWin()){
+            for(Player x : detectives)
+                win.add(x.piece());
+        }
+        if(mrxWins())
+            win.add(mrX.piece());
+         this.winner = ImmutableSet.copyOf(win);
+
+
+
 
     }
-    @Override
+
+    @Override @Nonnull
     public GameSetup getSetup(){
         return this.setup;
     }
 
-    @Override
+    @Override @Nonnull
     public ImmutableSet<Piece> getPlayers(){
         Set<Piece> players = new HashSet<>();
             players.add(mrX.piece());
@@ -110,16 +117,16 @@ final class MyGameState implements GameState {
             players.add(x.piece());
         return ImmutableSet.copyOf(players);
     }
-    @Override
+    @Override @Nonnull
     public Optional<Integer> getDetectiveLocation(Piece.Detective detective){
        for(Player x : this.detectives)
-           if(x.piece().equals(detective))
+           if(x.piece() == detective)
                return Optional.of(x.location());
            return Optional.empty();
 
     }
 
-    @Override
+    @Override @Nonnull
     public Optional<TicketBoard> getPlayerTickets(Piece piece){
         for(Player x : everyone)
             if(x.piece() == piece) return Optional.of(new TicketBoard() {
@@ -131,6 +138,8 @@ final class MyGameState implements GameState {
         return Optional.empty();
 
     }
+
+
     private static ImmutableSet<Move.SingleMove> makeSingleMoves(
             GameSetup setup,
             List<Player> detectives,
@@ -172,7 +181,6 @@ final class MyGameState implements GameState {
                         locationEmpty = false;
 
                     }
-                    break;
                 }
                 if(locationEmpty){
                     for (ScotlandYard.Transport t : setup.graph.edgeValueOrDefault(destination1, destination2, ImmutableSet.of())) {
@@ -188,33 +196,38 @@ final class MyGameState implements GameState {
         }
       return ImmutableSet.copyOf(doubleMoves);
     }
-    @Override
+    @Override @Nonnull
     public ImmutableList<LogEntry> getMrXTravelLog(){
         return this.log;
     }
 
     private boolean detectivesWin(){
         boolean detectiveswin = false;
-
-        return detectiveswin;
+        for(Player x : detectives)
+            if(x.location() == mrX.location())
+                detectiveswin = true;
+            if(makeSingleMoves(setup,detectives,mrX, mrX.location()).isEmpty() && this.remaining.contains(mrX.piece()))
+                detectiveswin = true;
+            return detectiveswin;
 
     }
     private boolean mrxWins(){
         boolean mrxWins = false;
-
+        if(this.log.size() == setup.rounds.size() && this.remaining.contains(mrX.piece()))
+            mrxWins = true;
+        int size = 0;
+        for(Player x : detectives){
+            if(makeSingleMoves(setup,detectives,x, x.location()).isEmpty())
+                size ++;
+        }
+        if(size == detectives.size())
+            mrxWins =  true;
         return mrxWins;
     }
 
-    @Override
+    @Override @Nonnull
     public ImmutableSet<Piece> getWinner(){
-        Set<Piece> winners = new HashSet<>();
-        if(mrxWins())
-            winners.add(mrX.piece());
-        if(detectivesWin()){
-            winners.addAll(createSet(everyone));
-            winners.remove(mrX.piece());
-        }
-        return ImmutableSet.copyOf(winners);
+       return this.winner;
     }
     private Player getPlayer(Piece piece){
         Player tmp = null;
@@ -223,10 +236,14 @@ final class MyGameState implements GameState {
                tmp = x;
             return tmp;
     }
-    @Override
+    @Override @Nonnull
     public ImmutableSet<Move> getAvailableMoves() {
+
+        if(!getWinner().isEmpty())
+            return ImmutableSet.copyOf(new HashSet<>());
+
         Set<Move.SingleMove> singleMoves = new HashSet<>();
-        Player player = null;
+        Player player;
         for (Piece x : this.remaining) {
             player = getPlayer(x);
             singleMoves.addAll(makeSingleMoves(setup, detectives, player, player.location()));
@@ -264,26 +281,25 @@ final class MyGameState implements GameState {
         return pieces;
     }
     private int visitMe(Move move){
-        int z = move.visit(new Move.Visitor<>(){
+
+        return move.visit(new Move.Visitor<>(){
 
             @Override
-            public Integer visit(Move.SingleMove move) {
-                return move.destination;
+            public Integer visit(Move.SingleMove move1) {
+                return move1.destination;
             }
 
             @Override
-            public Integer visit(Move.DoubleMove move) {
-                return move.destination2;
+            public Integer visit(Move.DoubleMove move1) {
+                return move1.destination2;
             }
         });
-
-        return z;
     }
-    @Override
+    @Override @Nonnull
     public GameState advance(Move move){
         getAvailableMoves();
         if(!moves.contains(move)) throw new IllegalArgumentException("Illegal move: "+move);
-        List<LogEntry> newlog = new ArrayList<>(this.log);
+        List<LogEntry> newLogEntry = new ArrayList<>(this.log);
         List<Player> evr = new ArrayList<>();
         Set<Piece> remainingafter =new HashSet<>(this.remaining);
 
@@ -294,16 +310,20 @@ final class MyGameState implements GameState {
 
                 tmp=tmp.use(move.tickets());
 
-                int z = visitMe(move);
-                tmp=tmp.at(z);
+                int location = visitMe(move);
+                tmp=tmp.at(location);
 
                 if(move.commencedBy().isMrX())
-                    newlog = updateLog(move,z);
+                    newLogEntry = updateLog(move,location);
 
 
             }
             evr.add(tmp);
         }
+
+        for(Player p : detectives)
+            if(makeSingleMoves(setup,detectives,p,p.location()).isEmpty())
+                removePiece(remainingafter,p.piece());
 
         if(remainingafter.size() == 1 ){
             if (remainingafter.contains(this.mrX.piece())){
@@ -311,7 +331,7 @@ final class MyGameState implements GameState {
                 removePiece(remainingafter,move.commencedBy());
             }
              else{
-                 remainingafter = createSet(evr);
+                remainingafter = createSet(evr);
                  for(Player x : detectives)
                      removePiece(remainingafter,x.piece());
             }
@@ -331,7 +351,7 @@ final class MyGameState implements GameState {
 
 
         evr.remove(0);
-        return new MyGameState(setup,ImmutableSet.copyOf(remainingafter),ImmutableList.copyOf(newlog),mrx,ImmutableList.copyOf(evr));
+        return new MyGameState(setup,ImmutableSet.copyOf(remainingafter),ImmutableList.copyOf(newLogEntry),mrx,ImmutableList.copyOf(evr));
 
     }
 

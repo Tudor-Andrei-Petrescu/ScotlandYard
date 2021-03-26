@@ -37,7 +37,7 @@ public interface Move extends Serializable {
 	 * side effects.
 	 * @return the return value
 	 */
-	<T> T visit(Visitor<T> visitor);
+	<T> T  visit(Visitor<T> visitor);
 
 	/**
 	 * A generic visitor for use with the {@link Move#visit(Visitor)} method.
