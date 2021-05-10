@@ -32,12 +32,21 @@ public final class MyModelFactory implements Factory<Model> {
 			this.state = new MyGameState(setup, ImmutableSet.of(Piece.MrX.MRX), ImmutableList.of(), mrX, detectives);
 		}
 
+		/**
+		 *
+		 * @returns the current GameState
+		 */
 		@Nonnull
 		@Override
 		public Board getCurrentBoard() {
 			return this.state;
 		}
 
+		/**
+		 *
+		 * @param observer the observer to register
+		 *Adds a new observer if he is not registered yet
+		 */
 		@Override
 		public void registerObserver(@Nonnull Observer observer) {
             if(observers.contains(observer))
@@ -47,6 +56,11 @@ public final class MyModelFactory implements Factory<Model> {
             	observers.add(observer);
 		}
 
+		/**
+		 *
+		 * @param observer the observer to register
+		 *Removes a given observer if he is part of the list
+		 */
 		@Override
 		public void unregisterObserver(@Nonnull Observer observer) {
 			if(observer == null)
@@ -57,12 +71,21 @@ public final class MyModelFactory implements Factory<Model> {
 
 		}
 
+		/**
+		 *
+		 * @returns all the observers
+		 */
 		@Nonnull
 		@Override
 		public ImmutableSet<Observer> getObservers() {
 			return ImmutableSet.copyOf(observers);
 		}
 
+		/**
+		 *
+		 * @param move delegates the move to the underlying
+		 * Notifies all the observers
+		 */
 		@Override
 		public void chooseMove(@Nonnull Move move) {
 			Observer.Event event;
@@ -78,10 +101,11 @@ public final class MyModelFactory implements Factory<Model> {
 
 		}
 	}
+
 	@Nonnull @Override public Model build(GameSetup setup,
 	                                      Player mrX,
 	                                      ImmutableList<Player> detectives) {
-		// TODO
+
 		MyModel myModel = new MyModel(setup, mrX, detectives);
 		return myModel;
 	}

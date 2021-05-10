@@ -17,10 +17,15 @@ final class MyGameState implements GameState {
     private ImmutableSet<Move> moves;
     private final ImmutableSet<Piece> winner;
 
+    /**
+     * @param detectives
+     * Checks that a detective doesn't have DOUBLE/SECRET tickets
+     */
+
     private void rightTickets(List<Player> detectives){
         boolean rightTickets = true;
-        for(Player x : detectives)
-            if(x.has(ScotlandYard.Ticket.DOUBLE) || x.has(ScotlandYard.Ticket.SECRET) )
+        for(Player p : detectives)
+            if(p.has(ScotlandYard.Ticket.DOUBLE) || p.has(ScotlandYard.Ticket.SECRET) )
                 rightTickets = false;
 
          if(!rightTickets)
@@ -28,6 +33,11 @@ final class MyGameState implements GameState {
 
     }
 
+    /**
+     *
+     * @param setup
+     * Checks that there are rounds to play before the game starts, and that the graph exists
+     */
     private void testSetupEmpty(GameSetup setup){
         if(setup.rounds.isEmpty())
             throw new IllegalArgumentException("Rounds is empty!");
@@ -35,16 +45,33 @@ final class MyGameState implements GameState {
             throw new IllegalArgumentException("Graph empty");
     }
 
+    /**
+     *
+     * @param remaining
+     * Checks that there are players in a current round
+     */
+
     private void testPlayersEmpty(final ImmutableSet<Piece> remaining){
         if(remaining.isEmpty()) throw new IllegalArgumentException("No players!");
     }
 
+    /**
+     *
+     * @param mrX
+     * Checks that mrX is not a detective
+     */
     private void testMrxDetective(final Player mrX){
         if(mrX.isDetective()) throw new IllegalArgumentException("MrX is not a detective!");
     }
+
+    /**
+     *
+     * @param detectives
+     * Checks that there are no 2 identical detectives and that mrX is not among them
+     */
     private void testImpostorAmongUs(final List<Player> detectives){
-        for(Player x : detectives)
-            if(!x.isDetective())
+        for(Player p : detectives)
+            if(!p.isDetective())
                 throw new IllegalArgumentException("There cannot be more than 1 MrX!");
         int middle = detectives.size()/2, i=0;
         while(i<=middle){
@@ -54,6 +81,11 @@ final class MyGameState implements GameState {
         }
     }
 
+    /**
+     *
+     * @param detectives
+     * Checks that there aren't 2 detectives on the same location, uses the Comparator class for that
+     */
     private void testDetectiveLocation(final List<Player> detectives){
         List<Player> temp = new ArrayList<>(detectives);
         temp.sort(new DetectiveLocation());
@@ -63,6 +95,12 @@ final class MyGameState implements GameState {
 
     }
 
+    /**
+     *
+     * @param detectives
+     * @param mrX
+     * Helper function which returns an ImmutableList with every player in the game, mrX being the first one
+     */
    private ImmutableList<Player> initEveryone(List<Player> detectives, Player mrX){
         List<Player> list = new ArrayList<>();
         list.add(mrX);
@@ -71,6 +109,8 @@ final class MyGameState implements GameState {
 
 
     }
+
+
     MyGameState(final GameSetup setup,
                 final ImmutableSet<Piece> remaining,
                 final ImmutableList<LogEntry> log,
@@ -104,42 +144,68 @@ final class MyGameState implements GameState {
 
     }
 
+    /**
+     *
+     * @returns the Game setup
+     */
     @Override @Nonnull
     public GameSetup getSetup(){
         return this.setup;
     }
 
+    /**
+     *
+     * @returns an ImmutableSet with every piece in the game
+     */
     @Override @Nonnull
     public ImmutableSet<Piece> getPlayers(){
         Set<Piece> players = new HashSet<>();
             players.add(mrX.piece());
-        for(Player x : this.detectives)
-            players.add(x.piece());
+        for(Player p : this.detectives)
+            players.add(p.piece());
         return ImmutableSet.copyOf(players);
     }
+
+    /**
+     *
+     * @param detective the detective
+     * @returns the location of a detective if there is such player, otherwise empty
+     */
     @Override @Nonnull
     public Optional<Integer> getDetectiveLocation(Piece.Detective detective){
-       for(Player x : this.detectives)
-           if(x.piece() == detective)
-               return Optional.of(x.location());
+       for(Player p : this.detectives)
+           if(p.piece() == detective)
+               return Optional.of(p.location());
            return Optional.empty();
 
     }
 
+    /**
+     *
+     * @param piece the player piece
+     * If the player exits it returns an anonymous class which can be used to get the number of tickets for a specific player, otherwise empty
+     */
     @Override @Nonnull
     public Optional<TicketBoard> getPlayerTickets(Piece piece){
-        for(Player x : everyone)
-            if(x.piece() == piece) return Optional.of(new TicketBoard() {
+        for(Player p : everyone)
+            if(p.piece() == piece) return Optional.of(new TicketBoard() {
                 @Override
                 public int getCount(@Nonnull ScotlandYard.Ticket ticket) {
-                    return x.tickets().get(ticket);
+                    return p.tickets().get(ticket);
                 }
             });
         return Optional.empty();
 
     }
 
-
+    /**
+     *
+     * @param setup
+     * @param detectives
+     * @param player
+     * @param source
+     *@returns an ImmutableSet with all the possible moves for a given player, with respect to the locations of the detectives in the game and the number of tickets
+     */
     private static ImmutableSet<Move.SingleMove> makeSingleMoves(
             GameSetup setup,
             List<Player> detectives,
@@ -148,8 +214,8 @@ final class MyGameState implements GameState {
         final var singleMoves = new ArrayList<Move.SingleMove>();
         for(int destination : setup.graph.adjacentNodes(source)) {
             boolean locationEmpty = true;
-            for(Player x : detectives) {
-                if (x.location() == destination)
+            for(Player p : detectives) {
+                if (p.location() == destination)
                     locationEmpty = false;
             }
             if(locationEmpty){
@@ -163,6 +229,15 @@ final class MyGameState implements GameState {
         }
         return ImmutableSet.copyOf(singleMoves);
     }
+
+    /**
+     *
+     * @param setup
+     * @param detectives
+     * @param mrX
+     * @param source
+     * @returns an ImmutableSet with all the double moves mrX can make
+     */
     private static ImmutableSet<Move.DoubleMove> makeDoubleMoves(
             GameSetup setup,
             List<Player> detectives,
@@ -176,8 +251,8 @@ final class MyGameState implements GameState {
             Player tmp = mrX.use(move1.tickets());
             for(int destination2 : setup.graph.adjacentNodes(destination1)){
                 boolean locationEmpty = true;
-                for(Player x : detectives) {
-                    if (x.location() == destination2) {
+                for(Player p : detectives) {
+                    if (p.location() == destination2) {
                         locationEmpty = false;
 
                     }
@@ -196,28 +271,42 @@ final class MyGameState implements GameState {
         }
       return ImmutableSet.copyOf(doubleMoves);
     }
+
+    /**
+     *
+     * @returns the travel log of mrX
+     */
     @Override @Nonnull
     public ImmutableList<LogEntry> getMrXTravelLog(){
         return this.log;
     }
 
+    /**
+     *
+     * @returns whether the detectives have won the game
+     */
     private boolean detectivesWin(){
-        boolean detectiveswin = false;
-        for(Player x : detectives)
-            if(x.location() == mrX.location())
-                detectiveswin = true;
+        boolean detectivesWin = false;
+        for(Player p : detectives)
+            if(p.location() == mrX.location())
+                detectivesWin = true;
             if(makeSingleMoves(setup,detectives,mrX, mrX.location()).isEmpty() && this.remaining.contains(mrX.piece()))
-                detectiveswin = true;
-            return detectiveswin;
+                detectivesWin = true;
+            return detectivesWin;
 
     }
+
+    /**
+     *
+     * @returns whether mrX has won the game
+     */
     private boolean mrxWins(){
         boolean mrxWins = false;
         if(this.log.size() == setup.rounds.size() && this.remaining.contains(mrX.piece()))
             mrxWins = true;
         int size = 0;
-        for(Player x : detectives){
-            if(makeSingleMoves(setup,detectives,x, x.location()).isEmpty())
+        for(Player p : detectives){
+            if(makeSingleMoves(setup,detectives,p, p.location()).isEmpty())
                 size ++;
         }
         if(size == detectives.size())
@@ -225,17 +314,32 @@ final class MyGameState implements GameState {
         return mrxWins;
     }
 
+    /**
+     *
+     * @returns the winner
+     */
     @Override @Nonnull
     public ImmutableSet<Piece> getWinner(){
        return this.winner;
     }
+
+    /**
+     *
+     * @param piece
+     * @return the player object of a given piece
+     */
     private Player getPlayer(Piece piece){
         Player tmp = null;
-        for(Player x : everyone)
-            if(x.piece().equals(piece))
-               tmp = x;
+        for(Player p : everyone)
+            if(p.piece().equals(piece))
+               tmp = p;
             return tmp;
     }
+
+    /**
+     *
+     * @returns an ImmutableSet with all the available moves that mrX or the detectives can make
+     */
     @Override @Nonnull
     public ImmutableSet<Move> getAvailableMoves() {
 
@@ -244,11 +348,13 @@ final class MyGameState implements GameState {
 
         Set<Move.SingleMove> singleMoves = new HashSet<>();
         Player player;
-        for (Piece x : this.remaining) {
-            player = getPlayer(x);
+        for (Piece p : this.remaining) {
+            player = getPlayer(p);
             singleMoves.addAll(makeSingleMoves(setup, detectives, player, player.location()));
         }
         Set<Move> moves = new HashSet<>(singleMoves);
+
+        //Checking that mrX can use the DOUBLE ticket, or if he has one
         if(this.remaining.contains(mrX.piece()) && mrX.has(ScotlandYard.Ticket.DOUBLE) && this.log.size() +2 <=setup.rounds.size()){
             Set<Move.DoubleMove> doubleMoves = new HashSet<>(makeDoubleMoves(setup, detectives, mrX, mrX.location()));
             moves.addAll(doubleMoves);
@@ -257,22 +363,40 @@ final class MyGameState implements GameState {
         return this.moves;
     }
 
+    /**
+     *
+     * @param move
+     * @param location
+     * @returns an updated log after mrX makes a move
+     */
     private List<LogEntry> updateLog(Move move,int location){
-        List<LogEntry> newlog = new ArrayList<>(this.log);
+        List<LogEntry> newLog = new ArrayList<>(this.log);
         for(ScotlandYard.Ticket t : move.tickets()){
-            int size = newlog.size();
+            int size = newLog.size();
             if(t != ScotlandYard.Ticket.DOUBLE){
             if(setup.rounds.get(size) )
-                newlog.add(LogEntry.reveal(t,location));
-            else newlog.add(LogEntry.hidden(t));}
+                newLog.add(LogEntry.reveal(t,location));
+            else newLog.add(LogEntry.hidden(t));}
         }
-        return newlog;
+        return newLog;
     }
 
+    /**
+     *
+     * @param pieces
+     * @param piece
+     * Removes a given piece from the current Set
+     */
    private void removePiece(Set<Piece> pieces, Piece piece){
        pieces.remove(piece);
 
     }
+
+    /**
+     *
+     * @param everyone
+     * @returns a Set with the pieces of every player
+     */
     private Set<Piece> createSet(List<Player> everyone){
         Set<Piece> pieces = new HashSet<>();
         for(Player x : everyone)
@@ -280,6 +404,12 @@ final class MyGameState implements GameState {
 
         return pieces;
     }
+
+    /**
+     *
+     * @param move
+     * Implements the visitor pattern, returns the destination of a move
+     */
     private int visitMe(Move move){
 
         return move.visit(new Move.Visitor<>(){
@@ -295,18 +425,25 @@ final class MyGameState implements GameState {
             }
         });
     }
+
+    /**
+     *
+     * @param move the move to make
+     * If the move is allowed, then the player is updated to that location and a new GameState is returned
+     */
     @Override @Nonnull
     public GameState advance(Move move){
         getAvailableMoves();
         if(!moves.contains(move)) throw new IllegalArgumentException("Illegal move: "+move);
+
         List<LogEntry> newLogEntry = new ArrayList<>(this.log);
-        List<Player> evr = new ArrayList<>();
-        Set<Piece> remainingafter =new HashSet<>(this.remaining);
+        List<Player> detectiveList = new ArrayList<>(); //list with all detectives; at first it also contains mrX to ease the work
+        Set<Piece> remainingAfter =new HashSet<>(this.remaining);
 
-        for(Player x : everyone){
+        for(Player p : everyone){
 
-            Player tmp = x;
-            if(x.piece() == move.commencedBy()){
+            Player tmp = p;
+            if(p.piece() == move.commencedBy()){
 
                 tmp=tmp.use(move.tickets());
 
@@ -318,40 +455,39 @@ final class MyGameState implements GameState {
 
 
             }
-            evr.add(tmp);
+            detectiveList.add(tmp);
         }
 
         for(Player p : detectives)
             if(makeSingleMoves(setup,detectives,p,p.location()).isEmpty())
-                removePiece(remainingafter,p.piece());
+                removePiece(remainingAfter,p.piece());
 
-        if(remainingafter.size() == 1 ){
-            if (remainingafter.contains(this.mrX.piece())){
-                remainingafter = createSet(evr);
-                removePiece(remainingafter,move.commencedBy());
+        if(remainingAfter.size() == 1 ){
+            if (remainingAfter.contains(this.mrX.piece())){
+                remainingAfter = createSet(detectiveList);
+                removePiece(remainingAfter,move.commencedBy());
             }
              else{
-                remainingafter = createSet(evr);
-                 for(Player x : detectives)
-                     removePiece(remainingafter,x.piece());
+                remainingAfter = createSet(detectiveList);
+                 for(Player p : detectives)
+                     removePiece(remainingAfter,p.piece());
             }
 
         }
-        else removePiece(remainingafter, move.commencedBy());
+        else removePiece(remainingAfter, move.commencedBy());
 
-        Player mrx = evr.get(0);
+        Player mrx = detectiveList.get(0);
 
         if(move.commencedBy().isDetective()){
 
             for(ScotlandYard.Ticket t : move.tickets())
                 mrx = mrx.give(t);
-            evr.remove(0);
-            evr.add(0,mrx);
+
         }
 
 
-        evr.remove(0);
-        return new MyGameState(setup,ImmutableSet.copyOf(remainingafter),ImmutableList.copyOf(newLogEntry),mrx,ImmutableList.copyOf(evr));
+        detectiveList.remove(0);
+        return new MyGameState(setup,ImmutableSet.copyOf(remainingAfter),ImmutableList.copyOf(newLogEntry),mrx,ImmutableList.copyOf(detectiveList));
 
     }
 
