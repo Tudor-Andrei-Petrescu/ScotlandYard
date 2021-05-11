@@ -84,7 +84,7 @@ final class MyGameState implements GameState {
     /**
      *
      * @param detectives
-     * Checks that there aren't 2 detectives on the same location, uses the Comparator class for that
+     * Checks that there aren't 2 detectives on the same location, uses the Comparator interface for that
      */
     private void testDetectiveLocation(final List<Player> detectives){
         List<Player> temp = new ArrayList<>(detectives);
